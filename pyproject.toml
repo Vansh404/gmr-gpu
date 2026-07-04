@@ -1,0 +1,23 @@
+[build-system]
+requires = ["setuptools>=61"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "gmr-gpu"
+version = "0.1.0"
+description = "Batched, differentiable GPU motion retargeting for humanoid robots (a GPU backend for GMR)"
+readme = "README.md"
+license = { text = "MIT" }
+requires-python = ">=3.10"
+dependencies = [
+    "torch>=2.0",
+    "numpy",
+    "mujoco",
+    "general_motion_retargeting @ git+https://github.com/YanjieZe/GMR.git",
+]
+
+[project.optional-dependencies]
+dev = ["pytest", "mink"]
+
+[tool.setuptools]
+packages = ["gmr_gpu"]
