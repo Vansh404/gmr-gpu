@@ -148,6 +148,10 @@ the GMR/mink production pipeline on real CMU data. The build-and-certify
 journey is preserved in
 [`docs/journey/`](docs/journey/).
 
+
+https://github.com/user-attachments/assets/532ab8b8-0897-419d-aefc-a62865d9d739
+
+
 ## License
 
 MIT. Builds on [GMR](https://github.com/YanjieZe/GMR) (MIT) by Yanjie Ze et al.
