@@ -6,39 +6,54 @@ retargeting problem (same IK configs, weights, and preprocessing, validated to
 machine precision) as a batched projected Levenberg-Marquardt iteration in pure
 PyTorch.
 
-<!-- TODO: hero video — side-by-side (ours | mink), visually indistinguishable -->
+<!-- VIDEO PLACEHOLDER: hero — side-by-side (gmr-gpu | GMR/mink), same clip,
+     "spot the difference" framing -->
 
-## Why
+## Headline: all of CMU, one laptop
 
-CPU retargeting (mink/DAQP) solves one frame at a time. Motion-dataset
-generation for RL doesn't need one frame at a time — it needs a million frames,
-independently. Batching changes the economics:
+1,983 clips · 977,581 frames · 9.05 hours of motion. RTX 4090 Laptop GPU,
+WSL2, 15 GiB RAM. Quality = weighted task error against identical targets,
+same metric for every method (lower is better).
 
-- **Quality**: at production budgets, the batched solver converges deeper per
-  frame and tracks the human measurably better than the CPU pipeline
-  (task error 6.19 vs 6.46 on CMU 01_01, full clip, all statistics) — while
-  being visually indistinguishable.
-- **Throughput**: ~40 µs per frame-iteration at batch 8192 on a laptop RTX 4090
-  (~2,600 fps at a 10-iteration budget).
-- **Robustness**: memory-bounded chunked preprocessing survives clips that
-  OOM-kill the production pipeline (100% CMU coverage vs ~70%).
-- **Differentiable end-to-end**: pure-torch kinematics and solver — backprop
-  through retargeting, learn IK weights, embed in training loops.
+| method | clips | frames | solve time | fps | task err mean / p95 |
+|---|---|---|---|---|---|
+| **gmr-gpu (cold-batched)** | **1,983 (100%)** | 977,581 | **25.6 min** | **637** | **6.18 / 8.01** |
+| GMR / mink (solve-only, same cached inputs) | 1,983 | 977,581 | 42.2 min | 386 | 7.28 / 9.02 |
+| GMR production script (end-to-end) | 1,379 (69.5%) | 541,881 | 195 min | 46 | 7.48 / 9.34 |
 
-<!-- TODO: full-CMU 4-way benchmark table (repo / mink / seq / cold) -->
+- **Better tracking, not just faster**: at production iteration budgets the
+  batched solver converges deeper per frame — 15% lower task error across the
+  entire dataset. Converged optima match mink's (proven on shared clips); the
+  win is budget economics, purchased by batching.
+- **21× real-time** end-of-pipe: 9 hours of human motion retargeted in 25.6
+  minutes of GPU solving.
+- **100% coverage**: memory-bounded chunked preprocessing handles every clip,
+  including the long ones whose full-clip SMPL-X forward (up to ~50 GB) OOM-kills
+  the production pipeline. The production script tops out near 70% on a 15 GiB
+  machine.
+- The repo/mink error difference is subset composition only — their
+  trajectories are provably identical (max joint difference 3e-7); the
+  production script simply never finishes 604 clips.
+- A warm-started sequential mode (the CPU solver's structure, batched) is
+  dominated by construction: the frame-to-frame dependency chain caps wall time
+  at longest-clip × per-step regardless of batch width, and warm starts inherit
+  bad basins on acrobatic clips. Cold-start with each frame's base initialized
+  at its own pelvis target wins on both axes — one of several findings in
+  [`docs/journey/`](docs/journey/).
+- Fair-accounting note: solve-only rows share a one-time, resumable
+  preprocessing cache (SMPL-X forward + SLERP, robot-agnostic, reusable across
+  robots and solver runs); the production script's row includes that work
+  inline, which is exactly what makes it the end-to-end baseline.
 
-## How it works
+<!-- VIDEO PLACEHOLDER: gallery — ~20 clips, 3-pane (cold | seq | mink)
+     follow-cam renders across CMU subjects -->
 
-- Pure-functional batched kinematics (`BatchedRobot`): no in-place writes, no
-  TorchScript, no data-dependent branches — vmap/autograd/compile-legal by
-  construction. Geometry from the compiled MuJoCo model.
-- SE(3) body-twist error matching mink's convention to 2e-15.
-- `vmap(jacrev)` task Jacobians; batched Cholesky normal equations with
-  per-item Levenberg-Marquardt damping; joint limits as exact box projection;
-  branchless accept/reject via masks.
-- Cold-start with each frame's base initialized at its own pelvis target —
-  basin-safe, no warm-start chain, so every frame of every clip solves in
-  parallel.
+## Why differentiable
+
+The kinematics and solver are pure functional torch: no in-place writes, no
+TorchScript, no data-dependent branches. Beyond speed, that means you can
+backprop *through* retargeting — learn IK weights, embed retargeting in a
+training loop, or feed an RL pipeline without the motion ever leaving the GPU.
 
 ## Quickstart
 
@@ -52,15 +67,27 @@ motions = retarget_clips(["path/to/clip_stageii.npz"], robot="unitree_g1")
 Requires the SMPL-X body models (registration required, not redistributable) in
 `$SMPLX_FOLDER` or GMR's `assets/body_models/` — same convention as GMR.
 
+## How it works
+
+- Pure-functional batched kinematics (`BatchedRobot`), geometry from the
+  compiled MuJoCo model; SE(3) body-twist error matching mink's convention.
+- `vmap(jacrev)` task Jacobians; batched Cholesky normal equations with
+  per-item Levenberg-Marquardt damping; joint limits as exact box projection;
+  branchless accept/reject masks.
+- Every frame of every clip is an independent problem, pooled into GPU batches
+  of 8192; each frame's floating base initializes at its own pelvis target.
+
 ## Validation
 
-Every layer is certified against an independent oracle (`tests/`):
+Every layer is certified against an independent oracle (`tests/`, `pytest`):
 forward kinematics vs MuJoCo (1e-15), twist error vs mink (1e-15), Jacobians
 triangulated against finite differences *and* mink's analytic Jacobian,
-batched-vs-sequential equivalence (1e-14), and full-clip output parity vs the
-GMR/mink production pipeline on real CMU data. The build-and-certify journey is
-preserved in [`docs/journey/`](docs/journey/).
+batched-vs-sequential equivalence (1e-14), and full-dataset output parity vs
+the GMR/mink production pipeline on real CMU data. The build-and-certify
+journey — including every wrong turn — is preserved in
+[`docs/journey/`](docs/journey/).
 
 ## License
 
 MIT. Builds on [GMR](https://github.com/YanjieZe/GMR) (MIT) by Yanjie Ze et al.
+CMU mocap via [AMASS](https://amass.is.tue.mpg.de/) (not redistributed here).
