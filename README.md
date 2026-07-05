@@ -13,8 +13,8 @@ PyTorch.
 <!-- VIDEO PLACEHOLDER: hero — side-by-side (gmr-gpu | GMR/mink), same clip,
      "spot the difference" framing -->
 
+https://github.com/user-attachments/assets/024e4b10-99a3-4e9c-87f9-64fae5cea8ad
 
-https://github.com/user-attachments/assets/cf6b0605-224b-4a12-94b0-bbc20e930b45
 
 
 
@@ -87,9 +87,9 @@ immunity by architecture.
 
 
 https://github.com/user-attachments/assets/d1216058-f33d-44c5-b27f-0b29e4af3109
+https://github.com/user-attachments/assets/cf6b0605-224b-4a12-94b0-bbc20e930b45
 
 
-https://github.com/user-attachments/assets/024e4b10-99a3-4e9c-87f9-64fae5cea8ad
 ## Caveats
 **Although**, having no explicit chain between frames tends to introduce teleportation artifacts.
 Not a common sight, but happens, and it's something to ponder over in the coming releases. And, a flag-and-repair pass (re-solve high-error outliers warm) for the CPU variant is
