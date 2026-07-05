@@ -45,7 +45,39 @@ same metric for every method (lower is better).
   robots and solver runs); the production script's row includes that work
   inline, which is exactly what makes it the end-to-end baseline.
 
-<!-- VIDEO PLACEHOLDER: gallery — ~20 clips, 3-pane (cold | seq | mink)
+## When the production pipeline fails
+
+Dataset-wide means hide the sharpest difference. Comparing per-clip tracking
+error across all 1,983 clips:
+
+|  | clips >2× worse than the other | worst case |
+|---|---|---|
+| GMR / mink | **61 clips (3.1%)** | 16× (task error 124 — not tracking) |
+| gmr-gpu | 2 clips (0.1%) | 2.6× |
+
+The mechanism is structural, not a tuning issue. The production solver is a
+sequential warm-start chain: frame *t* starts from frame *t−1*'s solution with
+a tight iteration budget. When frame 0's target is far from the standing init,
+the solver never reaches it — and then **every subsequent frame inherits the
+lost pose**. The chain locks the failure in for the whole clip:
+
+![per-frame task error, CMU 102_28](docs/media/failure_trace_102_28.png)
+
+gmr-gpu has no chain to derail: every frame is solved independently with its
+base initialized at its own pelvis target. Same IK problem, same weights —
+immunity by architecture.
+
+<!-- VIDEO PLACEHOLDER: featured failure pair — hero_102_28 (mink error 51.7
+     vs ours 5.9) and hero_94_01 (38.6 vs 7.8), side-by-side renders where the
+     production pipeline visibly fails and gmr-gpu tracks -->
+
+Honesty note: the 2 clips where we are worse (74_09, 84_09 — short 49-frame
+stubs, plateaued at ~2.5× in a wrong joint-fold basin) are the residual
+cold-start cost. A flag-and-repair pass (re-solve high-error outliers warm) is
+straightforward future work; the reverse fix for the chain's 61 does not exist
+inside a sequential architecture.
+
+<!-- VIDEO PLACEHOLDER: gallery — remaining clips, 3-pane (cold | seq | mink)
      follow-cam renders across CMU subjects -->
 
 ## Why differentiable

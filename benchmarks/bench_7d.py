@@ -1,5 +1,5 @@
 """
-Step 7d of GMR-GPU: precision, device, and compile sweep -- the final verdict.
+Step 7d of GMR-GPU: precision, device, and compile 
 
 Questions this answers, in order:
   [1] f32 SAFETY: solve the real 240-frame problem in f32 and f64; if the task
