@@ -1,3 +1,7 @@
+
+
+https://github.com/user-attachments/assets/b2e1283f-b649-414a-9d18-4f7e49044cad
+
 # gmr-gpu
 
 **Batched, differentiable GPU motion retargeting for humanoid robots** — a GPU
