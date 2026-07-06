@@ -4,7 +4,7 @@
 
 # gmr-gpu
 
-**Batched, differentiable GPU motion retargeting for humanoid robots** — a GPU
+**Batched, differentiable GPU motion retargeting for humanoid robots**, a GPU
 backend for [GMR](https://github.com/YanjieZe/GMR) that solves the *same*
 retargeting problem (same IK configs, weights, and preprocessing, validated to
 machine precision) as a batched projected Levenberg-Marquardt iteration in pure
@@ -15,7 +15,7 @@ PyTorch.
 
 https://github.com/user-attachments/assets/024e4b10-99a3-4e9c-87f9-64fae5cea8ad
 
-
+Clip on the left is gmr-gpu, clip on the right is the original CPU gmr based on mink.
 
 
 
@@ -34,27 +34,25 @@ same metric for every method (lower is better).
 | GMR production script (end-to-end) | 1,379 (69.5%) | 541,881 | 195 min | 46 | 7.48 / 9.34 |
 
 - **Better and faster**: at production iteration budgets the
-  batched solver converges deeper per frame — 15% lower task error across the
-  entire dataset. Converged optima match mink's (proven on shared clips); the
-  win is budget economics, purchased by batching.
+  batched solver converges deeper per frame, 15% lower task error across the
+  entire dataset. Converged optima match mink's (proven on shared clips).
 - **21× real-time** : 9 hours of human motion retargeted in 25.6
   minutes of GPU solving. Down from the 42.2 mins it takes mink to do it.
 - **100% coverage**: memory-bounded chunked preprocessing handles every clip,
   including the long ones whose full-clip kills the pipeline by throwing out-of-memory faults. The production script tops out near 70% on a 15 GiB
-  machine.
-- The repo/mink error difference is subset composition only — their
-  trajectories are provably identical (max joint difference 3e-7); the
-  production script simply never finishes 604 clips.
+  machine. 
+- The repo/mink error difference is subset composition only, their
+  trajectories are provably identical (max joint difference 3e-7).
 - For the GPU variant, a warm-started sequential mode (the CPU solver's structure, batched) is
-  dominated by construction: the frame-to-frame dependency chain caps wall time
+  quite slow: the frame-to-frame dependency chain caps wall time
   at longest-clip × per-step regardless of batch width, and warm starts inherit
-  bad basins on acrobatic clips. Cold-start with each frame's base initialized
-  at its own pelvis target wins on both axes — one of several findings in
+  bad basins on certain acrobatic clips. Cold-start with each frame's base initialized
+  at its own pelvis target wins on both axes, one of several findings in
   [`docs/journey/`](docs/journey/).
 - Solve-only rows share a one-time, resumable
-  preprocessing cache (SMPL-X forward + SLERP, robot-agnostic, reusable across
+  preprocessing cache (SMPL-X forward + SLERP, robot-agnostic, **reusable** across
   robots and solver runs); the production script's row includes that work
-  inline, which is exactly what makes it the end-to-end baseline.
+  inline, which is exactly what makes it the end-to-end baseline. 
 
 ## When the production pipeline fails
 
@@ -67,7 +65,7 @@ error across all 1,983 clips:
 | gmr-gpu | 2 clips (0.1%) | 2.6× |
 
 A clip counts as a *failure* for a method when its tracking error on that clip
-exceeds **2×** the other method's — the same head-to-head test in both directions.
+exceeds **2×** the other method's, the same head-to-head test in both directions.
 
 
 My running hypothesis for this phenomena is that the production solver is a
@@ -93,11 +91,11 @@ https://github.com/user-attachments/assets/cf6b0605-224b-4a12-94b0-bbc20e930b45
 
 
 ## Caveats
-**Although**, having no explicit chain between frames tends to introduce teleportation artifacts.
+Having no explicit chain between frames tends to introduce teleportation artifacts.
 Not a common sight, but happens, and it's something to ponder over in the coming releases. And, a flag-and-repair pass (re-solve high-error outliers warm) for the CPU variant is
 straightforward future work because frames are independent. The chain
-could adopt the same trick — detect a lost frame, re-anchor cold at the
-target — but that is the independent-frames insight sneaking back in; and as
+could adopt the same trick, detect a lost frame, re-anchor cold at the
+target, but that is the independent-frames insight sneaking back in; and as
 shipped, the production pipeline computes no error signal at all, so it
 cannot notice it is lost, let alone recover
 
@@ -151,7 +149,9 @@ journey is preserved in
 
 https://github.com/user-attachments/assets/532ab8b8-0897-419d-aefc-a62865d9d739
 
-
+## Future Work
+If my profiling is correct, then the autograd Jacobian eats up around ~86% of solve times right now. This can be sliced out if we were to use an analytical Jacobian, which is possible.
+I've only tested this out on the CMU dataset with the G1, work needs to be done to include more AMASS datasets with other humanoids.
 ## License
 
 MIT. Builds on [GMR](https://github.com/YanjieZe/GMR) (MIT) by Yanjie Ze et al.
